@@ -102,6 +102,11 @@ graph TD
 
     %% Entrenamiento Lazy (Fallback de desacoplamiento)
     MLModel -.->|F. Lazy Training: Se auto-entrena si no estaba listo| DB
+
+    %% Fallback automático de conexión en el Frontend
+    UI -.->|G. Fallback: Desvío local directo si API está caída| PropSrv
+    UI -.->|G. Fallback: Desvío local directo si API está caída| PredSrv
+    UI -.->|G. Fallback: Desvío local directo si API está caída| UserSrv
 ```
 
 #### Descripción detallada de los flujos:
@@ -116,7 +121,7 @@ graph TD
 2. **Flujo de Fallback e Inicialización (Líneas Discontinuas/Destacadas):**
    * **Auto-Seeding (Base de Datos Vacía):** Al arrancar la aplicación, si el repositorio detecta que no hay propiedades registradas, el inicializador (`DataInitializer`) ejecuta el fallback de generación sintética mediante `RealEstateDataGenerator`. Este genera un dataset de 800 inmuebles realistas para poblar la base de datos y permitir el arranque del sistema.
    * **Entrenamiento Lazy (Decoupling):** Para evitar fallos si el modelo de Machine Learning no ha sido entrenado de forma explícita al momento de arrancar la API, el modelo implementa un flujo de fallback interno (`_ensure_trained()`) que lo auto-entrena cargando los datos actuales de la base de datos SQLite antes de responder a una predicción.
-   * **Control de Desconexión del Frontend:** Si el backend de FastAPI no se encuentra en línea, el frontend de Streamlit captura la excepción de conexión e interrumpe la ejecución de forma segura, informando al usuario y sugiriendo el comando de levantamiento manual del servidor API.
+   * **Mecanismo de Fallback de Conexión en el Frontend:** Si el backend de FastAPI no se encuentra en línea (o se cae la conexión), el `DataClient` del frontend captura automáticamente el error de conexión (`ConnectionError`) y cambia a modo local/offline de manera **completamente transparente**. Se conecta directamente a la base de datos SQLite e invoca los mismos servicios de dominio de forma local, mostrando un indicador de advertencia en el sidebar en lugar de interrumpir la aplicación.
 
 ---
 
