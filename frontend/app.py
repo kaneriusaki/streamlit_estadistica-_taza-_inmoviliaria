@@ -126,10 +126,57 @@ st.markdown("""
 
 API_URL = "http://localhost:8000/api"
 
+# --- SESIÓN DE USUARIO ---
+if "user_id" not in st.session_state:
+    st.session_state.user_id = None
+    st.session_state.user_name = None
+
 # --- SIDEBAR: TASADOR AUTOMÁTICO ---
 with st.sidebar:
     st.markdown("<h2 style='text-align: center;'>Tasador Inmobiliario</h2>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: #94a3b8;'>Introduce los datos de la propiedad para estimar su valor en el mercado.</p>", unsafe_allow_html=True)
+    
+    st.divider()
+    
+    # --- Registro/Selección de usuario ---
+    with st.expander(":material/person: Gestión de Usuario", expanded=st.session_state.user_id is None):
+        try:
+            users = requests.get(f"{API_URL}/users").json()
+        except:
+            users = []
+        
+        user_options = {f"{u['nombre']} ({u['email']})": u['id'] for u in users}
+        
+        if user_options:
+            selected = st.selectbox("Seleccionar usuario", ["--- Nuevo usuario ---"] + list(user_options.keys()))
+            if selected != "--- Nuevo usuario ---":
+                st.session_state.user_id = user_options[selected]
+                st.session_state.user_name = selected.split(" (")[0]
+        
+        if st.session_state.user_id is None or selected == "--- Nuevo usuario ---":
+            col_nom, col_mail = st.columns(2)
+            with col_nom:
+                new_nombre = st.text_input("Nombre", placeholder="Ej: Juan Pérez")
+            with col_mail:
+                new_email = st.text_input("Email", placeholder="ej@correo.com")
+            if st.button(":material/person_add: Registrarse", use_container_width=True):
+                if new_nombre and new_email:
+                    try:
+                        resp = requests.post(f"{API_URL}/users", json={"nombre": new_nombre, "email": new_email})
+                        if resp.status_code == 200:
+                            user_data = resp.json()
+                            st.session_state.user_id = user_data["id"]
+                            st.session_state.user_name = user_data["nombre"]
+                            st.rerun()
+                        else:
+                            st.error("El email ya está registrado")
+                    except:
+                        st.error("Error al conectar con la API")
+                else:
+                    st.warning("Completa todos los campos")
+    
+    if st.session_state.user_id:
+        st.info(f"👤 Usuario: **{st.session_state.user_name}**")
     
     st.divider()
 
@@ -157,9 +204,10 @@ with st.sidebar:
                     "banos": banos,
                     "distancia_centro_km": distancia,
                     "antiguedad_anos": antiguedad,
-                    "tiene_piscina": piscina_val
+                    "tiene_piscina": piscina_val,
+                    "user_id": st.session_state.user_id
                 }
-                res = requests.post(f"{API_URL}/predict", json=payload)
+                res = requests.post(f"{API_URL}/predict_and_save", json=payload)
                 if res.status_code == 200:
                     data = res.json()
                     st.success(f"### Valor Estimado: ${data['predicted_price']:,.0f}\n\nMargen de Error: ±${data['margin_of_error']:,.0f}")
@@ -286,13 +334,14 @@ with col4:
 st.markdown("<br><br>", unsafe_allow_html=True)
 
 # --- CHARTS ---
-t_map, t_factors, t_prefs_common, t_prefs_rare, t_prefs_cost, t_data = st.tabs([
+t_map, t_factors, t_prefs_common, t_prefs_rare, t_prefs_cost, t_data, t_history = st.tabs([
     ":material/map: Oportunidades", 
     ":material/psychology: Factores", 
     ":material/thumb_up: Más Comunes", 
     ":material/thumb_down: Menos Comunes",
     ":material/price_change: Impacto y Costos",
-    ":material/table_chart: Datos"
+    ":material/table_chart: Datos",
+    ":material/history: Historial"
 ])
 
 with t_map:
@@ -443,6 +492,47 @@ with t_data:
         )
     else:
         st.info("No se encontraron propiedades significativamente infravaloradas en el rastreo actual.")
+
+with t_history:
+    st.markdown("### :material/history: Historial de Tasaciones")
+    st.caption("Registro de todas las predicciones realizadas por los usuarios del sistema.")
+    
+    try:
+        preds = requests.get(f"{API_URL}/predictions").json()
+        if preds:
+            df_preds = pd.DataFrame(preds)
+            df_preds['created_at'] = pd.to_datetime(df_preds['created_at'])
+            df_preds['Valor Estimado'] = df_preds['predicted_price'].apply(lambda x: f"${x:,.0f}")
+            df_preds['Margen Error'] = df_preds['margin_of_error'].apply(lambda x: f"±${x:,.0f}")
+            df_preds['Usuario'] = df_preds['user_name'].fillna("Anónimo")
+            
+            col_filtro, _ = st.columns([1, 3])
+            with col_filtro:
+                filter_user = st.selectbox("Filtrar por usuario", ["Todos"] + list(df_preds['Usuario'].unique()))
+            
+            if filter_user != "Todos":
+                df_preds = df_preds[df_preds['Usuario'] == filter_user]
+            
+            st.dataframe(
+                df_preds[['created_at', 'Usuario', 'area_m2', 'habitaciones', 'banos', 'Valor Estimado', 'Margen Error']].rename(columns={
+                    'created_at': 'Fecha',
+                    'Usuario': 'Usuario',
+                    'area_m2': 'Área (m²)',
+                    'habitaciones': 'Hab.',
+                    'banos': 'Baños',
+                    'Valor Estimado': 'Valor Estimado',
+                    'Margen Error': 'Margen Error'
+                }),
+                use_container_width=True,
+                hide_index=True,
+                height=400
+            )
+            
+            st.markdown(f"**Total de predicciones registradas:** {len(df_preds)}")
+        else:
+            st.info("No hay predicciones registradas aún. Realiza una tasación desde el panel lateral.")
+    except Exception as e:
+        st.error("No se pudo cargar el historial de predicciones.")
 
 st.markdown("---")
 st.markdown("<p style='text-align: center; color: #64748b; font-size: 0.9rem;'>© 2026 Inteligencia Artificial Real Estate • Todos los derechos reservados</p>", unsafe_allow_html=True)
