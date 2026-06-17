@@ -4,6 +4,9 @@ from domain.entities.user import User
 from domain.ports.user_repository import IUserRepository
 
 
+from domain.exceptions import UserAlreadyExistsError
+
+
 class UserService:
     """
     Caso de uso: gestión de usuarios del sistema.
@@ -14,14 +17,16 @@ class UserService:
     def __init__(self, user_repo: IUserRepository):
         self._repo = user_repo
 
-    def create_user(self, nombre: str, email: str) -> Optional[dict]:
+    def create_user(self, nombre: str, email: str) -> dict:
         """
         Crea un nuevo usuario.
-        Devuelve el usuario creado o None si el email ya está registrado.
+        Devuelve el usuario creado o lanza UserAlreadyExistsError si el email ya está registrado.
         """
         user = User(nombre=nombre, email=email)
         created = self._repo.create(user)
-        return created.to_dict() if created else None
+        if created is None:
+            raise UserAlreadyExistsError(f"El email '{email}' ya está registrado.")
+        return created.to_dict()
 
     def list_users(self) -> List[dict]:
         """Devuelve todos los usuarios registrados."""

@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from application.services.user_service import UserService
 from adapters.api.dependencies import get_user_service
+from domain.exceptions import UserAlreadyExistsError
 
 router = APIRouter(prefix="/api", tags=["Users"])
 
@@ -13,11 +14,10 @@ class UserCreate(BaseModel):
 
 @router.post("/users")
 def create_user(user: UserCreate, service: UserService = Depends(get_user_service)):
-    result = service.create_user(user.nombre, user.email)
-    if result is None:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=409, detail="El email ya está registrado")
-    return result
+    try:
+        return service.create_user(user.nombre, user.email)
+    except UserAlreadyExistsError as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 
 @router.get("/users")

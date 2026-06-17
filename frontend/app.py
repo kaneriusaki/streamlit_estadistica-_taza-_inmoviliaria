@@ -1,9 +1,10 @@
 import streamlit as st
-import requests
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from fpdf import FPDF
+from data_client import DataClient
+from domain.exceptions import UserAlreadyExistsError, ApiCaidaError, DatosNoEncontradosError
 
 # Configuración de página
 st.set_page_config(page_title="Tasador Inmobiliario Premium", page_icon=":material/domain:", layout="wide")
@@ -124,7 +125,10 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-API_URL = "http://localhost:8000/api"
+# --- CLIENTE DE DATOS (CON FALLBACK INTEGRADO) ---
+if "data_client" not in st.session_state:
+    st.session_state.data_client = DataClient("http://localhost:8000/api")
+data_client = st.session_state.data_client
 
 # --- SESIÓN DE USUARIO ---
 if "user_id" not in st.session_state:
@@ -137,12 +141,20 @@ with st.sidebar:
     st.markdown("<p style='text-align: center; color: #94a3b8;'>Introduce los datos de la propiedad para estimar su valor en el mercado.</p>", unsafe_allow_html=True)
     
     st.divider()
+
+    # Indicador de estado de la conexión (Mecanismo de Fallback)
+    if data_client.local_mode:
+        st.sidebar.warning("⚠️ Conexión Local (Fallback SQLite)")
+    else:
+        st.sidebar.success("🟢 Conector IA (REST API Activa)")
+
+    st.divider()
     
     # --- Registro/Selección de usuario ---
     with st.expander(":material/person: Gestión de Usuario", expanded=st.session_state.user_id is None):
         try:
-            users = requests.get(f"{API_URL}/users").json()
-        except:
+            users = data_client.get_users()
+        except Exception:
             users = []
         
         user_options = {f"{u['nombre']} ({u['email']})": u['id'] for u in users}
@@ -162,16 +174,14 @@ with st.sidebar:
             if st.button(":material/person_add: Registrarse", use_container_width=True):
                 if new_nombre and new_email:
                     try:
-                        resp = requests.post(f"{API_URL}/users", json={"nombre": new_nombre, "email": new_email})
-                        if resp.status_code == 200:
-                            user_data = resp.json()
-                            st.session_state.user_id = user_data["id"]
-                            st.session_state.user_name = user_data["nombre"]
-                            st.rerun()
-                        else:
-                            st.error("El email ya está registrado")
-                    except:
-                        st.error("Error al conectar con la API")
+                        user_data = data_client.create_user(new_nombre, new_email)
+                        st.session_state.user_id = user_data["id"]
+                        st.session_state.user_name = user_data["nombre"]
+                        st.rerun()
+                    except UserAlreadyExistsError as e:
+                        st.error(f"❌ {str(e)}")
+                    except Exception as e:
+                        st.error(f"❌ Error al registrar: {str(e)}")
                 else:
                     st.warning("Completa todos los campos")
     
@@ -198,23 +208,18 @@ with st.sidebar:
     if st.button(":material/calculate: Calcular Tasación", use_container_width=True):
         with st.spinner("Analizando mercado..."):
             try:
-                payload = {
+                params = {
                     "area_m2": area_m2,
                     "habitaciones": habitaciones,
                     "banos": banos,
                     "distancia_centro_km": distancia,
                     "antiguedad_anos": antiguedad,
                     "tiene_piscina": piscina_val,
-                    "user_id": st.session_state.user_id
                 }
-                res = requests.post(f"{API_URL}/predict_and_save", json=payload)
-                if res.status_code == 200:
-                    data = res.json()
-                    st.success(f"### Valor Estimado: ${data['predicted_price']:,.0f}\n\nMargen de Error: ±${data['margin_of_error']:,.0f}")
-                else:
-                    st.error("❌ Error al calcular con la API.")
-            except requests.exceptions.ConnectionError:
-                st.error("❌ No se pudo conectar con el motor estadístico (API).")
+                data = data_client.predict_and_save(params, st.session_state.user_id)
+                st.success(f"### Valor Estimado: ${data['predicted_price']:,.0f}\n\nMargen de Error: ±${data['margin_of_error']:,.0f}")
+            except Exception as e:
+                st.error(f"❌ Error al calcular tasación: {str(e)}")
 
 # --- MAIN CONTENT ---
 st.markdown("<h1 class='premium-title'>Market Analytics & Real Estate</h1>", unsafe_allow_html=True)
@@ -223,19 +228,22 @@ st.markdown("<p class='premium-subtitle'>Plataforma avanzada de análisis inmobi
 # Cargar datos
 @st.cache_data(ttl=60)
 def load_data():
+    temp_client = DataClient("http://localhost:8000/api")
     try:
-        props = requests.get(f"{API_URL}/properties").json()
-        stats = requests.get(f"{API_URL}/stats_insight").json()
-        opps = requests.get(f"{API_URL}/opportunities").json()
-        return pd.DataFrame(props), stats, pd.DataFrame(opps)
-    except Exception as e:
-        return None, None, None
+        props = temp_client.get_properties()
+        stats = temp_client.get_stats_insight()
+        opps = temp_client.get_opportunities()
+        return pd.DataFrame(props), stats, pd.DataFrame(opps), temp_client.local_mode
+    except Exception:
+        return None, None, None, False
 
 with st.spinner("Cargando métricas del mercado..."):
-    df, stats, df_opps = load_data()
+    df, stats, df_opps, was_local = load_data()
+    if was_local:
+        data_client.local_mode = True
 
 if df is None:
-    st.error("⚠️ **Error de conexión:** El motor de datos analítico (Backend) no está en línea. Ejecuta `uvicorn main:app` en la carpeta backend para iniciarlo.")
+    st.error("⚠️ **Error Crítico de Datos:** No se pudo obtener la información del mercado (ni vía API ni vía local SQLite).")
     st.stop()
 
 def generate_pdf_report(df, stats):
@@ -498,7 +506,7 @@ with t_history:
     st.caption("Registro de todas las predicciones realizadas por los usuarios del sistema.")
     
     try:
-        preds = requests.get(f"{API_URL}/predictions").json()
+        preds = data_client.get_predictions()
         if preds:
             df_preds = pd.DataFrame(preds)
             df_preds['created_at'] = pd.to_datetime(df_preds['created_at'])
