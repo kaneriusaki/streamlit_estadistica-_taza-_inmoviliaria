@@ -23,6 +23,101 @@ El backend está estructurado siguiendo el patrón de **Arquitectura Hexagonal (
 
 El **Frontend** está construido en **Streamlit** y se comunica directamente con la API RESTful (Adaptador Primario).
 
+### Diagrama de Arquitectura y Flujos
+
+A continuación se detalla la arquitectura hexagonal del sistema, ilustrando tanto el **Flujo Normal** de peticiones como los mecanismos de **Fallback e Inicialización**:
+
+```mermaid
+graph TD
+    %% Estilos de nodos
+    classDef default fill:#1e293b,stroke:#38bdf8,stroke-width:1px,color:#f8fafc;
+    classDef domain fill:#0f172a,stroke:#a78bfa,stroke-width:2px,color:#f8fafc;
+    classDef infra fill:#1e1b4b,stroke:#f472b6,stroke-width:1px,color:#f8fafc;
+    classDef api fill:#0f172a,stroke:#38bdf8,stroke-width:1px,color:#f8fafc;
+    classDef fallback fill:#2d1d4d,stroke:#f43f5e,stroke-width:2px,stroke-dasharray: 5 5,color:#f8fafc;
+
+    subgraph Frontend ["Presentación (Streamlit)"]
+        UI["Interfaz de Usuario (app.py)"]
+    end
+
+    subgraph Adapters ["Adaptadores Primarios (FastAPI)"]
+        API["API Routers (routers/*)"]
+    end
+
+    subgraph Application ["Capa de Aplicación (Casos de Uso)"]
+        Init["DataInitializer (initializer.py)"]:::fallback
+        PropSrv["PropertyService"]
+        PredSrv["PredictionService"]
+        UserSrv["UserService"]
+    end
+
+    subgraph DomainCore ["Núcleo de Dominio (Hexágono)"]
+        subgraph Ports ["Puertos (Interfaces)"]
+            IPropRepo["IPropertyRepository"]
+            IML["IMLModel"]
+            IPredRepo["IPredictionRepository"]
+            IUserRepo["IUserRepository"]
+        end
+        subgraph Entities ["Entidades"]
+            Prop["Property"]
+            Pred["Prediction"]
+            User["User"]
+        end
+    end
+    class DomainCore,Ports,Entities,Prop,Pred,User domain;
+
+    subgraph Infrastructure ["Infraestructura (Adaptadores Secundarios)"]
+        SQLiteRepo["Repositorios SQLite (sqlite_*_repo.py)"]
+        DB[("Base de Datos (SQLite)")]
+        MLModel["SklearnLinearModel (sklearn_model.py)"]
+        DataGen["RealEstateDataGenerator (data_generator.py)"]:::fallback
+    end
+    class Infrastructure,SQLiteRepo,DB,MLModel,DataGen infra;
+
+    %% --- FLUJO NORMAL ---
+    UI -->|1. Petición HTTP REST| API
+    API -->|2. Inyección de dependencias| PropSrv
+    API -->|2. Inyección de dependencias| PredSrv
+    API -->|2. Inyección de dependencias| UserSrv
+
+    PropSrv -->|3. Consulta| IPropRepo
+    PredSrv -->|3. Predice y Guarda| IPredRepo
+    PredSrv -->|3. Solicita Predicción| IML
+    UserSrv -->|3. Registra/Valida| IUserRepo
+
+    IPropRepo -.->|Implementado por| SQLiteRepo
+    IPredRepo -.->|Implementado por| SQLiteRepo
+    IML -.->|Implementado por| MLModel
+    IUserRepo -.->|Implementado por| SQLiteRepo
+
+    SQLiteRepo -->|4. Lectura/Escritura SQL| DB
+    MLModel -->|4. Predice vía Regresión Lineal| MLModel
+
+    %% --- FLUJO DE FALLBACK / INICIALIZACIÓN ---
+    Init -->|A. Verifica si DB está vacía| IPropRepo
+    Init -.->|B. Activa Fallback: Genera Datos Sintéticos| DataGen
+    DataGen -.->|C. Retorna 800 registros sintéticos| Init
+    Init -->|D. Guarda propiedades en BD| IPropRepo
+    Init -->|E. Entrena modelo con nuevos datos| IML
+
+    %% Entrenamiento Lazy (Fallback de desacoplamiento)
+    MLModel -.->|F. Lazy Training: Se auto-entrena si no estaba listo| DB
+```
+
+#### Descripción detallada de los flujos:
+
+1. **Flujo Normal (Líneas Continuas):**
+   * El usuario interactúa con la interfaz de **Streamlit**, por ejemplo, solicitando una predicción.
+   * El frontend realiza una llamada HTTP POST a `/api/predict_and_save` en **FastAPI**.
+   * FastAPI delega la petición en la capa de aplicación ejecutando el caso de uso `PredictionService`.
+   * El servicio interactúa directamente con los puertos del dominio (`IPredictionRepository` e `IMLModel`).
+   * La infraestructura concreta realiza la predicción (vía `SklearnLinearModel`) y la guarda en la base de datos **SQLite** mediante `SQLitePredictionRepository`.
+
+2. **Flujo de Fallback e Inicialización (Líneas Discontinuas/Destacadas):**
+   * **Auto-Seeding (Base de Datos Vacía):** Al arrancar la aplicación, si el repositorio detecta que no hay propiedades registradas, el inicializador (`DataInitializer`) ejecuta el fallback de generación sintética mediante `RealEstateDataGenerator`. Este genera un dataset de 800 inmuebles realistas para poblar la base de datos y permitir el arranque del sistema.
+   * **Entrenamiento Lazy (Decoupling):** Para evitar fallos si el modelo de Machine Learning no ha sido entrenado de forma explícita al momento de arrancar la API, el modelo implementa un flujo de fallback interno (`_ensure_trained()`) que lo auto-entrena cargando los datos actuales de la base de datos SQLite antes de responder a una predicción.
+   * **Control de Desconexión del Frontend:** Si el backend de FastAPI no se encuentra en línea, el frontend de Streamlit captura la excepción de conexión e interrumpe la ejecución de forma segura, informando al usuario y sugiriendo el comando de levantamiento manual del servidor API.
+
 ---
 
 ## Estructura de Directorios
