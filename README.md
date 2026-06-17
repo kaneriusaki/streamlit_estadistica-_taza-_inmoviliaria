@@ -1,27 +1,27 @@
 # Tasador Automático de Bienes Raíces 🏠📈
 
-Este es un proyecto Full-Stack diseñado para demostrar la integración de un modelo de Machine Learning y gestión de persistencia bajo los principios de **Arquitectura Limpia (Clean Architecture)**, separando de manera estricta las responsabilidades del negocio de las tecnologías e infraestructuras externas.
+Este es un proyecto Full-Stack diseñado para demostrar la integración de un modelo de Machine Learning y gestión de persistencia bajo los principios de la **Arquitectura Hexagonal (Puertos y Adaptadores)**, separando de manera estricta las responsabilidades y reglas del negocio de las tecnologías e infraestructuras externas.
 
 ## Arquitectura del Proyecto
 
-El backend está estructurado en capas concéntricas (arquitectura de cebolla o Clean Architecture) donde las dependencias apuntan únicamente hacia el interior:
+El backend está estructurado siguiendo el patrón de **Arquitectura Hexagonal (Ports & Adapters)**. La lógica central del dominio de negocio es independiente de tecnologías externas y se comunica con el exterior a través de **puertos** (interfaces) y **adaptadores** (implementaciones concretas):
 
-1. **Domain (Dominio):**
-   - **Entities:** Modelos de negocio puros (`User`, `Property`, `Prediction`) libres de librerías externas o ORMs.
-   - **Ports:** Interfaces abstractas que definen el comportamiento de almacenamiento y modelos de ML (`user_repository`, `property_repository`, `prediction_repository`, `ml_model_port`).
+1. **Domain (Dominio / Núcleo del Hexágono):**
+   - **Entities:** Modelos de negocio puros (`User`, `Property`, `Prediction`) libres de dependencias de frameworks o bases de datos.
+   - **Ports (Puertos):** Interfaces abstractas que definen los contratos para interactuar con bases de datos u otros servicios externos (`user_repository`, `property_repository`, `prediction_repository`, `ml_model_port`).
 
-2. **Application (Aplicación):**
-   - **Services:** Implementación de los casos de uso (`UserService`, `PropertyService`, `PredictionService`) que coordinan el flujo de datos desde y hacia el dominio.
-   - **Initializer:** Orquestador de la inicialización de servicios y repositorios.
+2. **Application (Aplicación / Casos de Uso):**
+   - **Services:** Implementación de los casos de uso (`UserService`, `PropertyService`, `PredictionService`) que orquestan las operaciones del negocio interactuando con los puertos de dominio.
+   - **Initializer:** Encargado de instanciar y conectar los servicios y adaptadores al iniciar la aplicación.
 
-3. **Infrastructure (Infraestructura):**
-   - **Persistence:** Base de datos relacional local en SQLite, incluyendo migraciones y repositorios concretos que implementan los puertos de dominio.
-   - **ML (Machine Learning):** Generador sintético de datos realista y modelo de regresión lineal múltiple con Scikit-Learn.
+3. **Infrastructure (Infraestructura / Adaptadores Secundarios o Driven Adapters):**
+   - **Persistence:** Base de datos relacional local en SQLite, repositorios concretos que implementan las interfaces (puertos) del dominio.
+   - **ML (Machine Learning):** Implementación concreta de la predicción y generación de datos a través de Scikit-Learn.
 
-4. **Adapters (Adaptadores de API):**
-   - Controladores de API construidos sobre **FastAPI** que exponen los endpoints correspondientes para interactuar con la aplicación.
+4. **Adapters (Adaptadores de API / Adaptadores Primarios o Driving Adapters):**
+   - Controladores y enrutadores construidos en **FastAPI** que traducen las solicitudes HTTP entrantes en llamadas a la capa de aplicación.
 
-El **Frontend** está construido en **Streamlit** y se comunica directamente con la API RESTful.
+El **Frontend** está construido en **Streamlit** y se comunica directamente con la API RESTful (Adaptador Primario).
 
 ---
 
