@@ -2,7 +2,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from application.services.prediction_service import PredictionService
-from adapters.api.dependencies import get_prediction_service
+from adapters.primary.api.dependencies import get_prediction_service
 
 router = APIRouter(prefix="/api", tags=["Predictions"])
 

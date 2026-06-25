@@ -7,12 +7,12 @@ Composition Root: wire up de todas las capas.
   PropertyService para cumplir SRP.
 """
 
-from infrastructure.ml.sklearn_model import SklearnLinearModel
-from infrastructure.ml.data_generator import RealEstateDataGenerator
-from infrastructure.persistence.database import init_db
-from infrastructure.persistence.sqlite_property_repo import SQLitePropertyRepository
-from infrastructure.persistence.sqlite_user_repo import SQLiteUserRepository
-from infrastructure.persistence.sqlite_prediction_repo import SQLitePredictionRepository
+from adapters.secondary.ml.sklearn_model import SklearnLinearModel
+from adapters.secondary.ml.data_generator import RealEstateDataGenerator
+from adapters.secondary.persistence.database import init_db
+from adapters.secondary.persistence.sqlite_property_repo import SQLitePropertyRepository
+from adapters.secondary.persistence.sqlite_user_repo import SQLiteUserRepository
+from adapters.secondary.persistence.sqlite_prediction_repo import SQLitePredictionRepository
 from application.services.property_service import PropertyService
 from application.services.user_service import UserService
 from application.services.prediction_service import PredictionService

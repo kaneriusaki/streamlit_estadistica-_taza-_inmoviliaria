@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 from domain.entities.user import User
-from domain.ports.user_repository import IUserRepository
+from domain.ports.user_repository import UserRepository
 
 
 from domain.exceptions import UserAlreadyExistsError
@@ -14,7 +14,7 @@ class UserService:
     Orquesta la creación y listado de usuarios a través del repositorio.
     """
 
-    def __init__(self, user_repo: IUserRepository):
+    def __init__(self, user_repo: UserRepository):
         self._repo = user_repo
 
     def create_user(self, nombre: str, email: str) -> dict:

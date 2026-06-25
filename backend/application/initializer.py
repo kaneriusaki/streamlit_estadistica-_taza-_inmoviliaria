@@ -6,8 +6,8 @@ y el entrenamiento inicial del modelo ML.
 Se ejecuta una sola vez al arrancar la aplicación.
 """
 
-from domain.ports.property_repository import IPropertyRepository
-from domain.ports.ml_model_port import IMLModel
+from domain.ports.property_repository import PropertyRepository
+from domain.ports.ml_model_port import MLModel
 
 
 class DataInitializer:
@@ -16,13 +16,13 @@ class DataInitializer:
     de la consulta de propiedades (PropertyService).
 
     - S: única razón de cambio: la lógica de bootstrap del sistema.
-    - D: depende de interfaces (IPropertyRepository, IMLModel), no de concretions.
+    - D: depende de interfaces (PropertyRepository, MLModel), no de concretions.
     """
 
     def __init__(
         self,
-        property_repo: IPropertyRepository,
-        ml_model: IMLModel,
+        property_repo: PropertyRepository,
+        ml_model: MLModel,
         data_generator,
     ):
         self._repo = property_repo

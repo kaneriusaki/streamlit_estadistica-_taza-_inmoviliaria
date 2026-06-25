@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from application.services.property_service import PropertyService
-from adapters.api.dependencies import get_property_service
+from adapters.primary.api.dependencies import get_property_service
 
 router = APIRouter(prefix="/api", tags=["Properties"])
 

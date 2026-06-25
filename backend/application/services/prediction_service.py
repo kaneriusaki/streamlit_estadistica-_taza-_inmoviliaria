@@ -1,8 +1,8 @@
 from typing import List, Optional
 
 from domain.entities.prediction import Prediction
-from domain.ports.prediction_repository import IPredictionRepository
-from domain.ports.ml_model_port import IMLModel
+from domain.ports.prediction_repository import PredictionRepository
+from domain.ports.ml_model_port import MLModel
 
 
 class PredictionService:
@@ -15,8 +15,8 @@ class PredictionService:
 
     def __init__(
         self,
-        prediction_repo: IPredictionRepository,
-        ml_model: IMLModel,
+        prediction_repo: PredictionRepository,
+        ml_model: MLModel,
     ):
         self._repo = prediction_repo
         self._model = ml_model

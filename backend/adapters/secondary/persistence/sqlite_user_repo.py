@@ -2,13 +2,13 @@ import sqlite3
 from typing import List, Optional
 
 from domain.entities.user import User
-from domain.ports.user_repository import IUserRepository
-from infrastructure.persistence.database import get_connection
+from domain.ports.user_repository import UserRepository
+from adapters.secondary.persistence.database import get_connection
 
 
-class SQLiteUserRepository(IUserRepository):
+class SQLiteUserRepository(UserRepository):
     """
-    Adaptador de salida: implementación concreta de IUserRepository usando SQLite.
+    Adaptador de salida: implementación concreta de UserRepository usando SQLite.
     """
 
     def create(self, user: User) -> Optional[User]:

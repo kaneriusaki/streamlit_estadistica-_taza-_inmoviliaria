@@ -4,7 +4,7 @@ from typing import List, Optional
 from domain.entities.user import User
 
 
-class IUserRepository(ABC):
+class UserRepository(ABC):
     """
     Puerto de salida: contrato abstracto para el acceso a datos de usuarios.
     """

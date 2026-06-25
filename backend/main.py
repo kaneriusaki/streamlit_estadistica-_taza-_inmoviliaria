@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from adapters.api.routers import property_router, user_router, prediction_router
+from adapters.primary.api.routers import property_router, user_router, prediction_router
 
 app = FastAPI(
     title="Tasador Automático de Bienes Raíces API",

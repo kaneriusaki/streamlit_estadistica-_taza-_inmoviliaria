@@ -1,13 +1,13 @@
 from typing import List, Optional
 
 from domain.entities.prediction import Prediction
-from domain.ports.prediction_repository import IPredictionRepository
-from infrastructure.persistence.database import get_connection
+from domain.ports.prediction_repository import PredictionRepository
+from adapters.secondary.persistence.database import get_connection
 
 
-class SQLitePredictionRepository(IPredictionRepository):
+class SQLitePredictionRepository(PredictionRepository):
     """
-    Adaptador de salida: implementación concreta de IPredictionRepository usando SQLite.
+    Adaptador de salida: implementación concreta de PredictionRepository usando SQLite.
     """
 
     def save(self, prediction: Prediction) -> None:

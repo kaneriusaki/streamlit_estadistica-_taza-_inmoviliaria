@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from application.services.user_service import UserService
-from adapters.api.dependencies import get_user_service
+from adapters.primary.api.dependencies import get_user_service
 from domain.exceptions import UserAlreadyExistsError
 
 router = APIRouter(prefix="/api", tags=["Users"])

@@ -3,7 +3,7 @@ from typing import Dict
 import pandas as pd
 
 
-class IMLModel(ABC):
+class MLModel(ABC):
     """
     Puerto de salida: contrato abstracto para el modelo de Machine Learning.
     El dominio depende de esta interfaz, no de scikit-learn directamente.

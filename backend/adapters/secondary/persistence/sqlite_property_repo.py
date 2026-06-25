@@ -2,13 +2,13 @@ from typing import List
 import pandas as pd
 
 from domain.entities.property import Property
-from domain.ports.property_repository import IPropertyRepository
-from infrastructure.persistence.database import get_connection
+from domain.ports.property_repository import PropertyRepository
+from adapters.secondary.persistence.database import get_connection
 
 
-class SQLitePropertyRepository(IPropertyRepository):
+class SQLitePropertyRepository(PropertyRepository):
     """
-    Adaptador de salida: implementación concreta de IPropertyRepository usando SQLite.
+    Adaptador de salida: implementación concreta de PropertyRepository usando SQLite.
     El dominio nunca importa esta clase directamente.
     """
 

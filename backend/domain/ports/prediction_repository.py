@@ -4,7 +4,7 @@ from typing import List, Optional
 from domain.entities.prediction import Prediction
 
 
-class IPredictionRepository(ABC):
+class PredictionRepository(ABC):
     """
     Puerto de salida: contrato abstracto para el acceso a datos de predicciones.
     """

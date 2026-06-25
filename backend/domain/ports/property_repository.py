@@ -5,7 +5,7 @@ import pandas as pd
 from domain.entities.property import Property
 
 
-class IPropertyRepository(ABC):
+class PropertyRepository(ABC):
     """
     Puerto de salida: contrato abstracto para el acceso a datos de propiedades.
     El dominio depende de esta interfaz, NO de la implementación concreta.

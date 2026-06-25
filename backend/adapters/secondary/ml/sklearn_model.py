@@ -4,7 +4,7 @@ import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, r2_score
 
-from domain.ports.ml_model_port import IMLModel
+from domain.ports.ml_model_port import MLModel
 
 
 FEATURES = [
@@ -19,13 +19,13 @@ TARGET = "precio_lista"
 UNDERVALUED_THRESHOLD = 15_000
 
 
-class SklearnLinearModel(IMLModel):
+class SklearnLinearModel(MLModel):
     """
-    Adaptador de salida: implementación concreta de IMLModel.
+    Adaptador de salida: implementación concreta de MLModel.
 
-    - O: abierto a extensión (nuevos modelos via IMLModel), cerrado a modificación.
-    - L: cualquier implementación de IMLModel puede sustituir esta clase.
-    - D: la capa de dominio depende de IMLModel, no de esta implementación.
+    - O: abierto a extensión (nuevos modelos via MLModel), cerrado a modificación.
+    - L: cualquier implementación de MLModel puede sustituir esta clase.
+    - D: la capa de dominio depende de MLModel, no de esta implementación.
     """
 
     def __init__(self):

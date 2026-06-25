@@ -1,8 +1,8 @@
 from typing import List
 
 from domain.entities.property import Property
-from domain.ports.property_repository import IPropertyRepository
-from domain.ports.ml_model_port import IMLModel
+from domain.ports.property_repository import PropertyRepository
+from domain.ports.ml_model_port import MLModel
 
 
 class PropertyService:
@@ -15,8 +15,8 @@ class PropertyService:
 
     def __init__(
         self,
-        property_repo: IPropertyRepository,
-        ml_model: IMLModel,
+        property_repo: PropertyRepository,
+        ml_model: MLModel,
     ):
         self._repo = property_repo
         self._model = ml_model
