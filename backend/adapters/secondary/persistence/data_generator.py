@@ -1,11 +1,13 @@
 import pandas as pd
 import numpy as np
 
+from domain.ports.data_generator_port import AbstractDataGenerator
 
-class RealEstateDataGenerator:
+
+class RealEstateDataGenerator(AbstractDataGenerator):
     """
     Genera un dataset sintético pero realista de propiedades inmobiliarias.
-    Encapsulado como clase para poder ser inyectado como dependencia.
+    Implementa el puerto AbstractDataGenerator de dominio.
     """
 
     def generate(self, n_samples: int = 800) -> pd.DataFrame:

@@ -1,17 +1,21 @@
-from typing import List, Optional
+import sqlite3
+from typing import List, Optional, Callable
 
 from domain.entities.prediction import Prediction
 from domain.ports.prediction_repository import PredictionRepository
-from adapters.secondary.persistence.database import get_connection
 
 
 class SQLitePredictionRepository(PredictionRepository):
     """
     Adaptador de salida: implementación concreta de PredictionRepository usando SQLite.
+    Las dependencias de conexión a base de datos se inyectan a través de una factory.
     """
 
+    def __init__(self, connection_factory: Callable[[], sqlite3.Connection]):
+        self._connection_factory = connection_factory
+
     def save(self, prediction: Prediction) -> None:
-        conn = get_connection()
+        conn = self._connection_factory()
         conn.execute(
             """
             INSERT INTO predictions (
@@ -37,7 +41,7 @@ class SQLitePredictionRepository(PredictionRepository):
         conn.close()
 
     def find_all(self, user_id: Optional[int] = None) -> List[Prediction]:
-        conn = get_connection()
+        conn = self._connection_factory()
         if user_id:
             rows = conn.execute(
                 """

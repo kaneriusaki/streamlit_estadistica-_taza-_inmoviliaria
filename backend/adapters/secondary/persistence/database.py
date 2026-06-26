@@ -21,15 +21,14 @@ def get_connection() -> sqlite3.Connection:
     return conn
 
 
-def init_db() -> None:
+def init_schema(conn: sqlite3.Connection) -> None:
     """
-    Inicializa el esquema de la base de datos.
-    Crea las tablas si no existen.
+    Inicializa el esquema de la base de datos (creación de tablas e índices).
+    No contiene lógica de siembra de datos (seeding) de prueba.
     """
-    conn = get_connection()
     cursor = conn.cursor()
     cursor.executescript("""
--- Tabla users (sin cambios)
+-- Tabla users
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre TEXT NOT NULL,
@@ -37,7 +36,7 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TEXT DEFAULT (datetime('now'))
 );
 
--- Tabla properties (actualizada)
+-- Tabla properties
 CREATE TABLE IF NOT EXISTS properties (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES users(id),
@@ -50,14 +49,14 @@ CREATE TABLE IF NOT EXISTS properties (
     antiguedad_anos REAL NOT NULL CHECK(antiguedad_anos >= 0),
     tiene_piscina INTEGER NOT NULL DEFAULT 0 CHECK(tiene_piscina IN (0,1)),
     precio_lista REAL NOT NULL CHECK(precio_lista >= 0),
-    precio_predicho REAL,        -- columna derivada (se mantiene)
-    diferencia REAL,            -- columna derivada (se mantiene)
-    es_oportunidad INTEGER,     -- 0/1, se mantiene
+    precio_predicho REAL,        -- columna derivada
+    diferencia REAL,            -- columna derivada
+    es_oportunidad INTEGER,     -- 0/1
     created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
     updated_at TEXT
 );
 
--- Tabla predictions (actualizada)
+-- Tabla predictions
 CREATE TABLE IF NOT EXISTS predictions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES users(id),
@@ -84,9 +83,3 @@ CREATE INDEX IF NOT EXISTS idx_predictions_user_id ON predictions(user_id);
 CREATE INDEX IF NOT EXISTS idx_predictions_property_id ON predictions(property_id);
 CREATE INDEX IF NOT EXISTS idx_predictions_fecha ON predictions(created_at);
 """)
-    # Insertar usuario por defecto (Test) si la tabla está vacía para evitar fallos de Foreign Key
-    cursor.execute("SELECT COUNT(*) FROM users")
-    if cursor.fetchone()[0] == 0:
-        cursor.execute("INSERT INTO users (id, nombre, email) VALUES (1, 'Test', 'test@test.com')")
-    conn.commit()
-    conn.close()

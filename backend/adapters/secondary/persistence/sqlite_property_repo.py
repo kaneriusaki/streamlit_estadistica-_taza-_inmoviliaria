@@ -1,25 +1,28 @@
-from typing import List
+from typing import List, Callable
+import sqlite3
 import pandas as pd
 
 from domain.entities.property import Property
-from domain.ports.property_repository import PropertyRepository
-from adapters.secondary.persistence.database import get_connection
+from domain.ports.property_repository import PropertyQueryRepository, MLDataRepository
 
 
-class SQLitePropertyRepository(PropertyRepository):
+class SQLitePropertyRepository(PropertyQueryRepository, MLDataRepository):
     """
-    Adaptador de salida: implementación concreta de PropertyRepository usando SQLite.
-    El dominio nunca importa esta clase directamente.
+    Adaptador de salida: implementación concreta de PropertyQueryRepository y MLDataRepository usando SQLite.
+    Las dependencias de conexión a base de datos se inyectan a través de una factory.
     """
+
+    def __init__(self, connection_factory: Callable[[], sqlite3.Connection]):
+        self._connection_factory = connection_factory
 
     def count(self) -> int:
-        conn = get_connection()
+        conn = self._connection_factory()
         count = conn.execute("SELECT COUNT(*) FROM properties").fetchone()[0]
         conn.close()
         return count
 
     def save_all(self, df: pd.DataFrame) -> None:
-        conn = get_connection()
+        conn = self._connection_factory()
         conn.execute("DELETE FROM properties")
         
         # Copiar dataframe para no modificar el original
@@ -43,19 +46,19 @@ class SQLitePropertyRepository(PropertyRepository):
         conn.close()
 
     def load_as_dataframe(self) -> pd.DataFrame:
-        conn = get_connection()
+        conn = self._connection_factory()
         df = pd.read_sql("SELECT * FROM properties", conn)
         conn.close()
         return df
 
     def find_all(self) -> List[Property]:
-        conn = get_connection()
+        conn = self._connection_factory()
         rows = conn.execute("SELECT * FROM properties").fetchall()
         conn.close()
         return [self._row_to_entity(dict(r)) for r in rows]
 
     def find_opportunities(self) -> List[Property]:
-        conn = get_connection()
+        conn = self._connection_factory()
         rows = conn.execute(
             "SELECT * FROM properties WHERE es_oportunidad = 1"
         ).fetchall()

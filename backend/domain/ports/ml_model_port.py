@@ -3,16 +3,11 @@ from typing import Dict
 import pandas as pd
 
 
-class MLModel(ABC):
+class MLPredictor(ABC):
     """
-    Puerto de salida: contrato abstracto para el modelo de Machine Learning.
-    El dominio depende de esta interfaz, no de scikit-learn directamente.
+    Puerto de salida: Contrato abstracto para la inferencia, evaluación e información del modelo.
+    Un predictor externo servido como API solo necesita implementar esta interfaz.
     """
-
-    @abstractmethod
-    def train(self, df: pd.DataFrame) -> None:
-        """Entrena el modelo con el DataFrame de propiedades."""
-        ...
 
     @abstractmethod
     def predict(self, params: dict) -> dict:
@@ -20,7 +15,7 @@ class MLModel(ABC):
         Predice el precio para los parámetros dados.
         Devuelve: { predicted_price, margin_of_error, lower_bound, upper_bound }
         """
-        ...
+        pass
 
     @abstractmethod
     def compute_undervalued(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -28,14 +23,25 @@ class MLModel(ABC):
         Añade columnas precio_predicho, diferencia, es_oportunidad al DataFrame.
         Devuelve el DataFrame enriquecido.
         """
-        ...
+        pass
 
     @abstractmethod
     def get_feature_importance(self) -> Dict[str, float]:
         """Devuelve el impacto por unidad de cada característica."""
-        ...
+        pass
 
     @abstractmethod
     def get_metrics(self) -> Dict[str, float]:
-        """Devuelve métricas del modelo: r2_score, mean_absolute_error."""
-        ...
+        """Devuelve métricas de rendimiento del modelo: r2_score, mean_absolute_error."""
+        pass
+
+
+class MLTrainable(ABC):
+    """
+    Puerto de salida: Contrato abstracto para el entrenamiento de modelos de Machine Learning.
+    """
+
+    @abstractmethod
+    def train(self, model: MLPredictor, df: pd.DataFrame) -> None:
+        """Entrena el modelo predictor dado usando el DataFrame de propiedades."""
+        pass

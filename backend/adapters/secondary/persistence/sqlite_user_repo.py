@@ -1,18 +1,21 @@
 import sqlite3
-from typing import List, Optional
+from typing import List, Optional, Callable
 
 from domain.entities.user import User
 from domain.ports.user_repository import UserRepository
-from adapters.secondary.persistence.database import get_connection
 
 
 class SQLiteUserRepository(UserRepository):
     """
     Adaptador de salida: implementación concreta de UserRepository usando SQLite.
+    Las dependencias de conexión a base de datos se inyectan a través de una factory.
     """
 
+    def __init__(self, connection_factory: Callable[[], sqlite3.Connection]):
+        self._connection_factory = connection_factory
+
     def create(self, user: User) -> Optional[User]:
-        conn = get_connection()
+        conn = self._connection_factory()
         try:
             cursor = conn.execute(
                 "INSERT INTO users (nombre, email) VALUES (?, ?)",
@@ -32,7 +35,7 @@ class SQLiteUserRepository(UserRepository):
             conn.close()
 
     def find_all(self) -> List[User]:
-        conn = get_connection()
+        conn = self._connection_factory()
         rows = conn.execute(
             "SELECT * FROM users ORDER BY created_at DESC"
         ).fetchall()
